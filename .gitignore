@@ -1,0 +1,8 @@
+/dataset/dataset.csv
+/dataset_b64/dataset.csv
+/dataset/images/*
+/dataset_b64/images/*
+*.env
+**/__pycache__/
+**/*.py[cod]
+/kafka/setup/kafka_2.13-3.7.1.tgz

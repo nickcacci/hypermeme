@@ -1,0 +1,6 @@
+praw
+requests
+python-dotenv
+pandas
+easyocr
+transformers[torch]

@@ -1,0 +1,293 @@
+# https://docs.docker.com/compose/profiles/
+
+services:
+    # Data pipeline stuff
+    zookeeper:
+        image: tap:kafka
+        container_name: kafkaZK
+        environment:
+            - KAFKA_ACTION=start-zk
+        networks:
+            tap:
+                ipv4_address: 10.0.100.22
+        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+    kafkaServer:
+        image: tap:kafka
+        container_name: kafkaServer
+        environment:
+            - KAFKA_ACTION=start-kafka
+            #- KAFKA_HEAP_OPTS=-Xmx256M
+            #ports:
+            #    - 9092:9092
+        networks:
+            tap:
+                ipv4_address: 10.0.100.23
+        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+        depends_on:
+            - zookeeper
+
+    topic:
+        image: tap:kafka
+        container_name: kafkaTopic1
+        environment:
+            - KAFKA_ACTION=create-topic
+            - KAFKA_PARTITION=2
+            - KAFKA_TOPIC=reddit-posts
+        networks:
+            tap:
+        depends_on:
+            - zookeeper
+            - kafkaServer
+        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+
+    kafka-ui:
+        image: provectuslabs/kafka-ui:latest
+        container_name: kafkaWebUI
+        environment:
+            - KAFKA_CLUSTERS_0_NAME=local
+            - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafkaServer:9092
+        ports:
+            - 8080:8080
+        networks:
+            - tap
+        depends_on:
+            - kafkaServer
+        profiles: ["kafka", "ingestion","logstash", "pipeline"]
+    
+    praw_streaming:
+        image: tap:praw_python
+        build:
+            context: ./praw-python
+            dockerfile: Dockerfile
+        container_name: praw_streaming
+        volumes:
+            - ./dataset:/usr/src/app/dataset
+            - ./praw-python/bin:/usr/src/app/bin
+            - ./.env:/usr/src/app/bin/.env
+# https://www.jaided.ai/easyocr/documentation/
+            - ocr_model:/root/.EasyOCR/
+            - captioning_model:/tmp
+        networks:
+            - tap
+#        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1", "--do-not-save"]
+        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1"]
+        profiles: ["ingestion", "streaming", "pipeline"]
+        depends_on:
+            logstash:
+                condition: service_healthy
+            topic:
+                condition: service_completed_successfully
+            kafkaServer:
+                condition: service_started
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        -   driver: nvidia
+                            count: 1
+                            capabilities: [gpu]
+            
+    sendn:
+        image: tap:praw_python
+        build:
+            context: ./praw-python
+            dockerfile: Dockerfile
+        container_name: sendn
+        volumes:
+            - ./dataset:/usr/src/app/dataset
+            - ./praw-python/bin:/usr/src/app/bin
+            - ./.env:/usr/src/app/bin/.env
+# https://www.jaided.ai/easyocr/documentation/
+            - ocr_model:/root/.EasyOCR/
+            - captioning_model:/tmp
+        networks:
+            - tap
+        command: ["-m", "sendn","-n", "500", "-a", "http://logstash:8081", "-t", "5"]
+        profiles: ["ingestion", "pipeline"]
+        depends_on:
+            logstash:
+                condition: service_healthy
+            topic:
+                condition: service_completed_successfully
+            kafkaServer:
+                condition: service_started
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        -   driver: nvidia
+                            count: 1
+                            capabilities: [gpu]
+            
+            
+    download_dataset:
+        image: tap:praw_python
+        build:
+            context: ./praw-python
+            dockerfile: Dockerfile
+        container_name: download_dataset
+        volumes:
+            - ./dataset:/usr/src/app/dataset
+            - ./praw-python/bin:/usr/src/app/bin
+            - ./.env:/usr/src/app/bin/.env
+            - ocr_model:/root/.EasyOCR/
+            - captioning_model:/tmp
+        networks:
+            - tap
+        command: ["-m", "downloadn", "-n", "500"]
+        profiles: ["download-dataset", "build-model"]
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        -   driver: nvidia
+                            count: 1
+                            capabilities: [gpu]
+                        
+    es_settings:
+        image: tap:es_settings_python
+        build:
+            context: ./es_settings_python
+            dockerfile: Dockerfile
+        container_name: es_settings
+        volumes:
+            - ./es_settings_python/bin:/usr/src/app/bin
+        networks:
+            - tap
+        profiles: ["pipeline", "elasticsearch"]
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+
+
+    spark_streaming:
+        image: tap:spark
+        build:
+            context: ./spark
+            dockerfile: Dockerfile
+        hostname: spark
+        container_name: spark_streaming
+        volumes:
+        - ./spark/:/opt/tap/
+        - sparknlplibs:/tmp
+        command: > 
+            /opt/spark/bin/spark-submit --py-files /opt/tap/code/categories.py --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" --conf spark.driver.memory="24G" --conf spark.jsl.settings.pretrained.cache_folder="/tmp" --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.13.4,com.johnsnowlabs.nlp:spark-nlp_2.12:5.4.2  /opt/tap/code/streaming.py 
+        networks:
+            - tap
+        profiles: ["spark","streaming", "pipeline"]
+        depends_on:
+            es_settings:
+                condition: service_completed_successfully
+
+    spark_model_builder:
+        image: tap:spark
+        build:
+            context: ./spark
+            dockerfile: Dockerfile
+        hostname: spark
+        container_name: spark_model_builder
+        volumes:
+        - ./spark/:/opt/tap/
+        - sparknlplibs:/tmp
+        - ./dataset:/opt/dataset/
+        command: > 
+            /opt/spark/bin/spark-submit --py-files /opt/tap/code/categories.py --conf spark.driver.memory="24G" --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --conf spark.jsl.settings.pretrained.cache_folder="/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,com.johnsnowlabs.nlp:spark-nlp_2.12:5.4.2  /opt/tap/code/model_builder.py
+        networks:
+            - tap
+        profiles: ["build-model"]
+    #    createTopicRedditComments:
+    #        image: tap:kafka
+    #        container_name: kafkaTopic2
+    #        environment:
+    #            - KAFKA_ACTION=create-topic
+    #            - KAFKA_PARTITION=2
+    #            - KAFKA_TOPIC=reddit-comments
+    #        networks:
+    #            tap:
+    #        depends_on:
+    #            - zookeeper
+    #            - kafkaServer
+
+    #    kafkaConnector:
+    #        image: kafka-connect-reddit
+    #        container_name: kafkaConnector
+    #        networks:
+    #            - tap
+    #        depends_on:
+    #            - zookeeper
+    #            - kafkaServer
+    #            - createTopicRedditPosts
+    #            - createTopicRedditComments
+
+    logstash:
+        image: docker.elastic.co/logstash/logstash:8.13.0
+        container_name: logstash
+        ports:
+            - 8081:8081
+        networks:
+            tap:
+                ipv4_address: 10.0.100.24
+        environment:
+            XPACK_MONITORING_ENABLED: "false"
+            #LOG_LEVEL: "debug"
+        volumes:
+            - ./logstash/pipeline/reddit.conf:/usr/share/logstash/pipeline/logstash.conf
+        depends_on:
+            - kafkaServer
+            - topic
+        healthcheck:
+            test: bin/logstash -t
+            interval: 60s
+            timeout: 50s
+            retries: 5    
+        profiles: ["logstash", "ingestion", "pipeline"]
+
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+        container_name: elasticsearch
+        environment:
+            - discovery.type=single-node
+            - xpack.security.enabled=false
+        mem_limit: 1 GB
+        networks:
+            - tap
+        profiles: ["elasticsearch", "pipeline"]
+        healthcheck:
+            test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+            interval: 30s
+            timeout: 30s
+            retries: 3
+                
+    kibana:
+        hostname: kibana
+        container_name: kibana
+        image: docker.elastic.co/kibana/kibana:8.13.4
+        ports:
+        - 5601:5601
+        volumes:
+        - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+        depends_on:
+            topic:
+             condition: service_completed_successfully
+        networks:
+            - tap
+        profiles: ["kibana", "pipeline"]
+        
+
+networks:
+    tap:
+        name: tap
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 10.0.100.1/24
+        external: true
+# https://docs.docker.com/reference/compose-file/volumes/
+volumes:
+    sparknlplibs:
+    ocr_model:
+    captioning_model:
+          
+        
+    
+
