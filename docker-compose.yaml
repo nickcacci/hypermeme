@@ -135,7 +135,7 @@ services:
         networks:
             - tap
         command: ["-m", "downloadn", "-n", "500"]
-        profiles: ["download-dataset", "build-model"]
+        profiles: ["download-dataset"]
         deploy:
             resources:
                 reservations:
