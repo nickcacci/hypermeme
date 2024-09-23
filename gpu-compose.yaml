@@ -71,6 +71,8 @@ services:
             - tap
         #        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1", "--do-not-save"]
         command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1"]
+        environment:
+            TAP_USE_GPU: "True"
         profiles: ["ingestion", "streaming", "pipeline"]
         depends_on:
             logstash:
@@ -113,6 +115,8 @@ services:
                 "-t",
                 "5",
             ]
+        environment:
+            TAP_USE_GPU: "True"
         profiles: ["ingestion", "pipeline"]
         depends_on:
             logstash:
@@ -144,6 +148,8 @@ services:
         networks:
             - tap
         command: ["-m", "downloadn", "-n", "500"]
+        environment:
+            TAP_USE_GPU: "True"
         profiles: ["download-dataset"]
         deploy:
             resources:
