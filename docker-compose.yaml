@@ -266,7 +266,6 @@ networks:
         ipam:
             config:
                 - subnet: 10.0.100.1/24
-        external: true
 # https://docs.docker.com/reference/compose-file/volumes/
 volumes:
     sparknlplibs:
