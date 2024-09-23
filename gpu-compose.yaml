@@ -10,7 +10,7 @@ services:
         networks:
             tap:
                 ipv4_address: 10.0.100.22
-        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+        profiles: ["kafka", "ingestion", "logstash", "pipeline"]
     kafkaServer:
         image: tap:kafka
         container_name: kafkaServer
@@ -22,7 +22,7 @@ services:
         networks:
             tap:
                 ipv4_address: 10.0.100.23
-        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+        profiles: ["kafka", "ingestion", "logstash", "pipeline"]
         depends_on:
             - zookeeper
 
@@ -38,7 +38,7 @@ services:
         depends_on:
             - zookeeper
             - kafkaServer
-        profiles: [ "kafka", "ingestion","logstash", "pipeline"]
+        profiles: ["kafka", "ingestion", "logstash", "pipeline"]
 
     kafka-ui:
         image: provectuslabs/kafka-ui:latest
@@ -52,8 +52,8 @@ services:
             - tap
         depends_on:
             - kafkaServer
-        profiles: ["kafka", "ingestion","logstash", "pipeline"]
-    
+        profiles: ["kafka", "ingestion", "logstash", "pipeline"]
+
     praw_streaming:
         image: tap:praw_python
         build:
@@ -64,12 +64,12 @@ services:
             - ./dataset:/usr/src/app/dataset
             - ./praw-python/bin:/usr/src/app/bin
             - ./.env:/usr/src/app/bin/.env
-# https://www.jaided.ai/easyocr/documentation/
+            # https://www.jaided.ai/easyocr/documentation/
             - ocr_model:/root/.EasyOCR/
             - captioning_model:/tmp
         networks:
             - tap
-#        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1", "--do-not-save"]
+        #        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1", "--do-not-save"]
         command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1"]
         profiles: ["ingestion", "streaming", "pipeline"]
         depends_on:
@@ -79,7 +79,14 @@ services:
                 condition: service_completed_successfully
             kafkaServer:
                 condition: service_started
-            
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+
     sendn:
         image: tap:praw_python
         build:
@@ -90,12 +97,22 @@ services:
             - ./dataset:/usr/src/app/dataset
             - ./praw-python/bin:/usr/src/app/bin
             - ./.env:/usr/src/app/bin/.env
-# https://www.jaided.ai/easyocr/documentation/
+            # https://www.jaided.ai/easyocr/documentation/
             - ocr_model:/root/.EasyOCR/
             - captioning_model:/tmp
         networks:
             - tap
-        command: ["-m", "sendn","-n", "500", "-a", "http://logstash:8081", "-t", "5"]
+        command:
+            [
+                "-m",
+                "sendn",
+                "-n",
+                "500",
+                "-a",
+                "http://logstash:8081",
+                "-t",
+                "5",
+            ]
         profiles: ["ingestion", "pipeline"]
         depends_on:
             logstash:
@@ -104,8 +121,14 @@ services:
                 condition: service_completed_successfully
             kafkaServer:
                 condition: service_started
-            
-            
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+
     download_dataset:
         image: tap:praw_python
         build:
@@ -122,7 +145,14 @@ services:
             - tap
         command: ["-m", "downloadn", "-n", "500"]
         profiles: ["download-dataset"]
-                        
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+
     es_settings:
         image: tap:es_settings_python
         build:
@@ -138,7 +168,6 @@ services:
             elasticsearch:
                 condition: service_healthy
 
-
     spark_streaming:
         image: tap:spark
         build:
@@ -147,13 +176,13 @@ services:
         hostname: spark
         container_name: spark_streaming
         volumes:
-        - ./spark/:/opt/tap/
-        - sparknlplibs:/tmp
-        command: > 
-            /opt/spark/bin/spark-submit --py-files /opt/tap/code/categories.py --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" --conf spark.driver.memory="24G" --conf spark.jsl.settings.pretrained.cache_folder="/tmp" --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.13.4,com.johnsnowlabs.nlp:spark-nlp_2.12:5.4.2  /opt/tap/code/streaming.py 
+            - ./spark/:/opt/tap/
+            - sparknlplibs:/tmp
+        command: >
+            /opt/spark/bin/spark-submit --py-files /opt/tap/code/categories.py --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" --conf spark.driver.memory="24G" --conf spark.jsl.settings.pretrained.cache_folder="/tmp" --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.13.4,com.johnsnowlabs.nlp:spark-nlp_2.12:5.4.2  /opt/tap/code/streaming.py
         networks:
             - tap
-        profiles: ["spark","streaming", "pipeline"]
+        profiles: ["spark", "streaming", "pipeline"]
         depends_on:
             es_settings:
                 condition: service_completed_successfully
@@ -166,10 +195,10 @@ services:
         hostname: spark
         container_name: spark_model_builder
         volumes:
-        - ./spark/:/opt/tap/
-        - sparknlplibs:/tmp
-        - ./dataset:/opt/dataset/
-        command: > 
+            - ./spark/:/opt/tap/
+            - sparknlplibs:/tmp
+            - ./dataset:/opt/dataset/
+        command: >
             /opt/spark/bin/spark-submit --py-files /opt/tap/code/categories.py --conf spark.driver.memory="24G" --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" --conf spark.jsl.settings.pretrained.cache_folder="/tmp" --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,com.johnsnowlabs.nlp:spark-nlp_2.12:5.4.2  /opt/tap/code/model_builder.py
         networks:
             - tap
@@ -218,7 +247,7 @@ services:
             test: bin/logstash -t
             interval: 60s
             timeout: 50s
-            retries: 5    
+            retries: 5
         profiles: ["logstash", "ingestion", "pipeline"]
 
     elasticsearch:
@@ -232,26 +261,29 @@ services:
             - tap
         profiles: ["elasticsearch", "pipeline"]
         healthcheck:
-            test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+            test:
+                [
+                    "CMD-SHELL",
+                    "curl --silent --fail localhost:9200/_cluster/health || exit 1",
+                ]
             interval: 30s
             timeout: 30s
             retries: 3
-                
+
     kibana:
         hostname: kibana
         container_name: kibana
         image: docker.elastic.co/kibana/kibana:8.13.4
         ports:
-        - 5601:5601
+            - 5601:5601
         volumes:
-        - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+            - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
         depends_on:
             topic:
-             condition: service_completed_successfully
+                condition: service_completed_successfully
         networks:
             - tap
         profiles: ["kibana", "pipeline"]
-        
 
 networks:
     tap:
@@ -266,7 +298,3 @@ volumes:
     sparknlplibs:
     ocr_model:
     captioning_model:
-          
-        
-    
-

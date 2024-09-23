@@ -7,3 +7,4 @@
 **/*.py[cod]
 /kafka/setup/kafka_2.13-3.7.1.tgz
  **/.ipynb_checkpoints/
+ .ipynb_checkpoints/
