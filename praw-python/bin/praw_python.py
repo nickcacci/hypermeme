@@ -94,9 +94,13 @@ class meme:
 
     def _generate_caption(self, verbose=False):
         raw_image = Image.open(self.img_url).convert("RGB")
-        inputs = meme.processor(raw_image, return_tensors="pt").to(
-            "cuda", torch.float16
-        )
+        if bool(os.environ.get("TAP_USE_GPU", False)):
+            inputs = meme.processor(raw_image, return_tensors="pt").to(
+                "cuda", torch.float16
+            )
+        else:
+            inputs = meme.processor(raw_image, return_tensors="pt")
+
         out = meme.model.generate(
             **inputs,
             max_length=32,
