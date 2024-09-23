@@ -265,7 +265,7 @@ networks:
         driver: bridge
         ipam:
             config:
-                - subnet: 10.0.100.1/24
+                - subnet: 10.0.100.0/24
 # https://docs.docker.com/reference/compose-file/volumes/
 volumes:
     sparknlplibs:
