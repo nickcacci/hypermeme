@@ -236,6 +236,8 @@ services:
         mem_limit: 1 GB
         networks:
             - tap
+        volumes:
+          - es_data:/usr/share/elasticsearch/data
         profiles: ["elasticsearch", "pipeline"]
         healthcheck:
             test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
