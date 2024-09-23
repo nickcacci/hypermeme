@@ -13,6 +13,9 @@ services:
         profiles: [ "kafka", "ingestion","logstash", "pipeline"]
     kafkaServer:
         image: tap:kafka
+        build:
+            context: ./kafka
+            dockerfile: Dockerfile
         container_name: kafkaServer
         environment:
             - KAFKA_ACTION=start-kafka
@@ -28,6 +31,9 @@ services:
 
     topic:
         image: tap:kafka
+        build:
+            context: ./kafka
+            dockerfile: Dockerfile
         container_name: kafkaTopic1
         environment:
             - KAFKA_ACTION=create-topic
