@@ -102,7 +102,7 @@ services:
         networks:
             - tap
         command: ["-m", "sendn","-n", "500", "-a", "http://logstash:8081", "-t", "5"]
-        profiles: ["ingestion", "pipeline"]
+        profiles: ["sendn"]
         depends_on:
             logstash:
                 condition: service_healthy
@@ -273,6 +273,7 @@ volumes:
     sparknlplibs:
     ocr_model:
     captioning_model:
+    es_data:
           
         
     
