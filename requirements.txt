@@ -1,0 +1,5 @@
+open_clip_torch
+ollama
+google-genai
+python-dotenv
+streamlit

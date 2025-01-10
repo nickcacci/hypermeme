@@ -1,71 +1,27 @@
 from elasticsearch import Elasticsearch
 
 es = Elasticsearch(["http://elasticsearch:9200"])
-index_name = "reddit-posts"
+index_name = "memes"
 
 mapping = {
-    "settings": {
-        "analysis": {
-            "analyzer": {
-                "custom_analyzer": {
-                    "type": "standard",
-                    "stopwords": "_english_",  # Rimuove le stopwords in inglese
-                }
-            }
-        }
-    },
     "mappings": {
         "properties": {
-            "id": {"type": "keyword"},
-            "created_timestamp": {
-                "type": "date",
-                "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ||epoch_millis",
-            },
-            "title": {
-                "type": "text",
-                "fielddata": True,
-                "fields": {
-                    "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256,  # Limita la lunghezza massima del campo indicizzato
-                    }
-                },
-                "analyzer": "standard",
-            },
-            "selftext": {
-                "type": "text",
-                "fielddata": True,
-                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
-                "analyzer": "custom_analyzer",
-            },
-            "caption_text": {
-                "type": "text",
-                "fielddata": True,
-                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
-                "analyzer": "custom_analyzer",
-            },
-            "ocr_text": {
-                "type": "text",
-                "fielddata": True,
-                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
-                "analyzer": "custom_analyzer",
-            },
-            "score": {"type": "integer"},
-            "upvote_ratio": {"type": "float"},
-            "subreddit": {"type": "keyword"},
-            "img_url": {"type": "keyword"},
-            "img_filename": {"type": "keyword"},
-            "num_comments": {"type": "integer"},
-            "predicted_category": {"type": "keyword"},
-            "ground_truth_category": {"type": "keyword"},
-            "all_text": {
-                "type": "text",
-                "fielddata": True,
-                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
-                "analyzer": "custom_analyzer",
-            },
+            # The text of the post (every social media allows users to add text even in image posts)
+            " post_text": {"type": "text"},
+            "image_text": {"type": "text"},
+            "visual_description": {"type": "text"},
+            "explainer": {"type": "text"},
+            "remote_url": {"type": "keyword"},
+            "local_url": {"type": "keyword"},
+            # In Elasticsearch, there is no dedicated array data type. Any field can contain zero or more values by default, however, all values in the array must be of the same data type.
+            "tags": {"type": "keyword"},
+            # "text_embedding": {"type": "dense_vector", "dims": 1536},
+            # If dims is not specified, it will be set to the length of the first vector added to the field.
+            "text_embedding": {"type": "dense_vector"},
+            "img_embedding": {"type": "dense_vector"},
+            # TODO: Add template information
         }
-    },
+    }
 }
 
 
