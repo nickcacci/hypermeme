@@ -14,7 +14,12 @@ class GoogleLlmDescriber(interfaces.MemeDescriber):
 
     def describe(self, image_path: str) -> dict:
         image = Image.open(image_path)
+
         image.thumbnail([512, 512])
+
+        # Fix for images with transparency
+        if image.mode == "RGBA":
+            image = image.convert("RGB")
 
         response = self.client.models.generate_content(
             model=self.MODEL_ID,
@@ -27,4 +32,5 @@ class GoogleLlmDescriber(interfaces.MemeDescriber):
         meme_analysis = models.Meme.model_validate_json(response.text)
         return meme_analysis
 
-#TODO: add openAI
+
+# TODO: add openAI

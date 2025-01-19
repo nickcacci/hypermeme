@@ -1,0 +1,111 @@
+# https://docs.docker.com/compose/profiles/
+
+services:
+    
+  #   praw_streaming:
+  #     image: hm:praw_python
+  #     build:
+  #       context: ./ingestion_pipelines/reddit
+  #       dockerfile: Dockerfile
+  #     container_name: praw_streaming
+  #     volumes:
+  #       - ./memes_dataset:/usr/src/app/dataset
+  #       - ./ingestion_pipelines/reddit:/usr/src/app/bin
+  #       - ./.env:/usr/src/app/bin/.env
+  #     networks:
+  #       - hm
+  #     #        command: ["-m", "streaming", "-a", "http://logstash:8081", "-t", "1", "--do-not-save"]
+  #     command: ["-m", "streaming", "-t", "1"] # sendn:
+  #   image: tap:praw_python
+  #   build:
+  #     context: ./praw-python
+  #     dockerfile: Dockerfile
+  #   container_name: sendn
+  #   volumes:
+  #     - ./dataset:/usr/src/app/dataset
+  #     - ./praw-python/bin:/usr/src/app/bin
+  #     - ./.env:/usr/src/app/bin/.env
+  #   networks:
+  #     - hm
+  #   command:
+  #     ["-m", "sendn", "-n", "500", "-a", "http://logstash:8081", "-t", "5"]
+
+  # download_dataset:
+  #   image: tap:praw_python
+  #   build:
+  #     context: ./praw-python
+  #     dockerfile: Dockerfile
+  #   container_name: download_dataset
+  #   volumes:
+  #     - ./dataset:/usr/src/app/dataset
+  #     - ./praw-python/bin:/usr/src/app/bin
+  #     - ./.env:/usr/src/app/bin/.env
+  #     - ocr_model:/root/.EasyOCR/
+  #     - captioning_model:/tmp
+  #   networks:
+  #     - tap
+  #   command: ["-m", "downloadn", "-n", "500"]
+  #   profiles: ["download-dataset"]
+
+  # es_settings:
+  #   image: hm:es_settings_python
+  #   build:
+  #     context: ../es_settings_python
+  #     dockerfile: Dockerfile
+  #   container_name: es_settings
+  #   volumes:
+  #     - ../es_settings_python/bin:/usr/src/app/bin
+  #   networks:
+  #     - hm
+  #   profiles: ["pipeline", "elasticsearch"]
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    mem_limit: 1 GB
+    ports:
+      - 9200:9200
+    networks:
+      - hm
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    profiles: ["elasticsearch", "pipeline"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --silent --fail localhost:9200/_cluster/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  kibana:
+    hostname: kibana
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    ports:
+      - 5601:5601
+    volumes:
+      - ../kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+    networks:
+      - hm
+    profiles: ["kibana", "pipeline"]
+
+networks:
+  hm:
+    name: hm
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.100.0/24
+# https://docs.docker.com/reference/compose-file/volumes/
+volumes:
+  es_data:

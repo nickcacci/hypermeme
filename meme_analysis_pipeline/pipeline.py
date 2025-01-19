@@ -22,21 +22,25 @@ class MemeAnalysisPipeline:
         describer: interfaces.MemeDescriber = LocalLlmDescriber(),
         embedding_calculator: interfaces.EmbeddingCalculator = ClipEmbedder(),
         database_manager: interfaces.DatabaseManager = DummyDBManager(),
+        image_downloader: interfaces.ImageDownloader = TmpImgDownloader(),
     ):
         self.describer = describer
         self.embedding_calculator = embedding_calculator
         self.database_manager = database_manager
+        self.image_downloader = image_downloader
 
     def pipeline_info(self):
         print("Pipeline components:")
         print(f"Describer: {self.describer.__class__.__name__}")
         print(f"Embedding calculator: {self.embedding_calculator.__class__.__name__}")
         print(f"Database manager: {self.database_manager.__class__.__name__}")
+        print(f"Image downloader: {self.image_downloader.__class__.__name__}")
 
-    def process_meme(self, image_path: str, post_text: str = ""):
+    def process_meme(self, image_url: str, post_text: str = ""):
         # 0. TODO: download image
+        self.local_url = self.image_downloader.save_img(image_url)
         # 1. Descrivi il meme
-        llm_enrichment = self.describer.describe(image_path)
+        llm_enrichment = self.describer.describe(self.local_url)
         # text = description["text"]
 
         # 2. Calcola gli embeddings
@@ -44,7 +48,7 @@ class MemeAnalysisPipeline:
             llm_enrichment.explainer
         )
         image_embedding = self.embedding_calculator.calculate_image_embedding(
-            image_path
+            self.local_url
         )
 
         # TODO: template finding
@@ -54,13 +58,13 @@ class MemeAnalysisPipeline:
             enrichment=llm_enrichment,
             image_embedding=image_embedding,
             text_embedding=text_embedding,
-            img_url=image_path,
-            local_url=image_path,
+            img_url=image_url,
+            local_url=self.local_url,
             post_text=post_text,
         )
 
         # 4. Salva i dati nel database
-        self.database_manager.save_data({enriched_meme})
+        self.database_manager.save_data(enriched_meme)
         return enriched_meme
 
 

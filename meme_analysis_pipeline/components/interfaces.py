@@ -1,5 +1,11 @@
 from abc import ABC, abstractmethod
 
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from meme_analysis_pipeline.utils.models import EnrichedMeme
+
 
 class MemeDescriber(ABC):
     @abstractmethod
@@ -22,6 +28,13 @@ class EmbeddingCalculator(ABC):
 
 class DatabaseManager(ABC):
     @abstractmethod
-    def save_data(self, data: dict):
+    def save_data(self, data: EnrichedMeme):
         """Salva i dati nel database."""
+        pass
+
+
+class ImageDownloader(ABC):
+    @abstractmethod
+    def save_img(self, img_url: str) -> str:
+        """Salva i dati nel database. Ritorna l'url locale"""
         pass

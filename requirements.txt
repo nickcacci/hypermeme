@@ -3,3 +3,5 @@ ollama
 google-genai
 python-dotenv
 streamlit
+bs4
+praw
