@@ -81,3 +81,7 @@ class EnrichedMeme:
 
     def __repr__(self):
         return f"EnrichedMeme(img_url={self.img_url}, local_url={self.local_url}, post_text={self.post_text}, enrichment={self.enrichment}, image_embedding={self.image_embedding.size()}, text_embedding={self.text_embedding.size()}, template={self.template})"
+
+
+if __name__ == "__main__":
+    print(Meme.model_json_schema())

@@ -32,7 +32,7 @@ class LocalLlmDescriber(interfaces.MemeDescriber):
             messages=[
                 {
                     "role": "user",
-                    "content": "Analyze this image and return a detailed JSON description. If you cannot determine certain details, leave those fields empty.",
+                    "content": "Analyze this meme image and return a detailed JSON description. If you cannot determine certain details, leave those fields empty.",
                     "images": [image_path],
                 },
             ],
@@ -53,21 +53,23 @@ class ClipEmbedder(interfaces.EmbeddingCalculator):
         self.tokenizer = open_clip.get_tokenizer("ViT-B-32")
 
     def calculate_image_embedding(self, image_path):
-        #convert the image to rgb
-        image= Image.open(image_path).convert("RGB")
+        # convert the image to rgb
+        image = Image.open(image_path).convert("RGB")
         image = self.preprocess(image).unsqueeze(0)
-        image_features = self.model.encode_image(image)
+        with torch.no_grad(), torch.cuda.amp.autocast():
+            image_features = self.model.encode_image(image)
         return image_features
 
     def calculate_text_embedding(self, text):
         text = self.tokenizer(text)
-        return self.model.encode_text(text)
+        with torch.no_grad(), torch.cuda.amp.autocast():
+            return self.model.encode_text(text)
 
 
 class ElasticSearchManager(interfaces.DatabaseManager):
-    def __init__(self):
+    def __init__(self, index_name: str = "memes"):
         self.es = Elasticsearch(["http://localhost:9200"])
-        self.index_name = "memes"
+        self.index_name = index_name
 
     def save_data(self, data: models.EnrichedMeme):
         document = {
@@ -143,3 +145,8 @@ class LocalImgDownloader(interfaces.ImageDownloader):
                 return img_path
             else:
                 raise FileNotFoundError(f"Il file locale {img_url} non esiste.")
+
+
+class DummyImgDownloader(interfaces.ImageDownloader):
+    def save_img(self, img_url: str) -> str:
+        logging.info(f"Dummy Saving image from {img_url}...")

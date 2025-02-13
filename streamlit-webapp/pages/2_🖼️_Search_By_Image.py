@@ -13,6 +13,7 @@ from meme_analysis_pipeline.components.local_components import ClipEmbedder
 
 logging.basicConfig(level=logging.INFO)
 
+
 @st.cache_resource
 def get_embedding_model():
     logging.info("Loading embedding model...")
@@ -42,16 +43,16 @@ def get_image_embedding(image_path):
 def search_image_embedding(image_path):
     logging.info(f"Searching for image embedding for {image_path}...")
     embedding = get_image_embedding(image_path)
-    #log type of embedding
+    # log type of embedding
     logging.debug(f"Embedding type: {type(embedding.tolist())}")
 
     query = {
-            "knn": {
-                "field": "img_embedding",
-                "query_vector": embedding.squeeze(0).tolist(),
-                "k": 10,
-            }
+        "knn": {
+            "field": "img_embedding",
+            "query_vector": embedding.squeeze(0).tolist(),
+            "k": 10,
         }
+    }
 
     response = es.search(index="memes", body=query)
     logging.info("Search completed.")
@@ -71,33 +72,43 @@ def copy_to_tempfile(src_path):
 st.title("🖼️ Search By Image")
 
 st.write("Upload an image and the app will search for similar images.")
-
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+left, right = st.columns(2)
+with left:
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
+    with right:
+        st.image(uploaded_file, caption="Uploaded Image", width=200)
     uploaded_file_path = copy_to_tempfile(uploaded_file)
-    
+
     results = search_image_embedding(uploaded_file_path)
-    logging.info("Got %d Hits:" % results['hits']['total']['value'])
-    
+    logging.info("Got %d Hits:" % results["hits"]["total"]["value"])
+
     displayed_urls = set()
-    cols = st.columns(5)  # Create 5 columns for the grid
+    cols = st.columns(5, vertical_alignment="bottom")
     col_index = 0  # Initialize column index
-    
-    for i, hit in enumerate(results['hits']['hits'], start=1):
+
+    for i, hit in enumerate(results["hits"]["hits"], start=1):
         if hit["_source"]["remote_url"] not in displayed_urls:
             with cols[col_index]:
-                st.image(hit["_source"]["remote_url"], use_container_width=True, caption=f"#{i} \nScore: {hit['_score']}")
-                
-                with st.expander("More details"):
+
+                st.image(
+                    hit["_source"]["remote_url"],
+                    caption=f"#{i} \nScore: {hit['_score']}",
+                )
+                with st.popover("More details"):
                     st.markdown(f"**Local URL:** {hit['_source']['local_url']}")
                     st.markdown(f"**Remote URL:** {hit['_source']['remote_url']}")
                     st.markdown(f"**Tags:** {hit['_source']['tags']}")
-                
-                # Log the information
-                logging.info(f"Hit {i}: Relevance Score: {hit['_score']}, Local URL: {hit['_source']['local_url']}, Remote URL: {hit['_source']['remote_url']}, Tags: {hit['_source']['tags']}")
-                
-                displayed_urls.add(hit["_source"]["remote_url"])
-            
-            col_index = (col_index + 1) % 5  # Move to the next column, reset after 5
 
+            # Log the information
+            logging.info(
+                f"Hit {i}: Relevance Score: {hit['_score']}, Local URL: {hit['_source']['local_url']}, Remote URL: {hit['_source']['remote_url']}, Tags: {hit['_source']['tags']}"
+            )
+
+            displayed_urls.add(hit["_source"]["remote_url"])
+
+            # col_index = (col_index + 1) % 5  # Move to the next column, reset after 5
+            col_index = col_index + 1
+            if col_index == 5:
+                break

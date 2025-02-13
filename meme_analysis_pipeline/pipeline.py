@@ -36,9 +36,12 @@ class MemeAnalysisPipeline:
         print(f"Database manager: {self.database_manager.__class__.__name__}")
         print(f"Image downloader: {self.image_downloader.__class__.__name__}")
 
-    def process_meme(self, image_url: str, post_text: str = ""):
+    def process_meme(self, image_url: str, post_text: str = "", local_url: str = None):
         # 0. TODO: download image
-        self.local_url = self.image_downloader.save_img(image_url)
+        if local_url is None:
+            self.local_url = self.image_downloader.save_img(image_url)
+        else:
+            self.local_url = local_url
         # 1. Descrivi il meme
         llm_enrichment = self.describer.describe(self.local_url)
         # text = description["text"]
