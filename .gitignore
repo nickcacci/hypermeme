@@ -9,3 +9,6 @@
 **/.ipynb_checkpoints/
 .ipynb_checkpoints/
 .vscode/
+.memes_dataset/*
+memecap_dataset/
+memes_dataset/
