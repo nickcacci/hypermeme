@@ -1,105 +1,89 @@
-# hypermeme
+# MEMES - Memes Enrichment Management Exploration System
 
-=======
-*inspired by [NicsMeme](https://github.com/search?q=repo%3Atapunict%2Ftap2024%20nicsmeme&type=code)®*
+Sistema per l’analisi e l’archiviazione di meme di internet
 
-> "In the future memes will be able to generate themselves and propagate automatically"  
+## Introduzione
 
-*see also the [Dead Internet Theory](https://en.wikipedia.org/wiki/Dead_Internet_theory)*
+MEMES è un sistema modulare pensato per analizzare, arricchire e archiviare meme provenienti da diverse fonti online. Integrando strumenti di ingestion, modelli di linguaggio e visione, e tecnologie di embedding, il progetto mira a facilitare ricerche semantiche avanzate sui meme.  
+MEMES (Memes Enrichment Management Exploration System) offre una soluzione completa e scalabile per l'analisi e l'archiviazione dei meme, combinando tecnologie di elaborazione del linguaggio naturale, visione artificiale e archiviazione vettoriale per abilitare ricerche semantiche avanzate.
 
-![Meme competition with Nics](slides/imgs/competition_nics.jpg)
+## Caratteristiche principali
+
+- Arricchimento dei meme tramite modelli LLM e sistemi di vision.
+- Calcolo di embedding per testi e immagini.
+- Indicizzazione dei dati e dei metadati in Elasticsearch.
+- Integrazione con sistemi di ingestion per il recupero automatizzato dei meme.
+- Interfaccia web per la ricerca semantica, testuale o per immagine e la visualizzazione dei meme indicizzati.
+
+## Struttura del Sistema
+
+Il sistema è organizzato in diverse fasi:
+
+1. **Scraping dei Meme:** Recupero dei meme da fonti online.
+2. **Download delle Immagini:** Salvataggio locale delle immagini e dei template.
+3. **Arricchimento:** Elaborazione delle immagini tramite modelli LLM e visivi per generare descrizioni e embedding.
+4. **Indicizzazione:** Salvataggio dei dati e dei vettori in Elasticsearch per abilitare ricerche semantiche.
+5. **Interfaccia Utente:** Web app per effettuare ricerche sia per keyword sia in base alla somiglianza degli embedding.
 
 ---
+## Architettura Generale
 
-## For a complete presentation of this project see [hypermeme.ipynb](hypermeme.ipynb)  
+```mermaid
+flowchart TB
+    %% Subgraph 5: Data Ingestion
+    subgraph Ingestion ["1\. Data Ingestion"]
+        A["1.1 Meme da fonti diverse"]
+        B["1.2 Upload meme tramite webapp"]
+    end
 
-## Project overview
+    %% Subgraph 1 & 2: Pipeline di Analisi e Arricchimento
+    subgraph MainPipeline ["Pipeline di Analisi e Arricchimento"]
+        C["2\. Vision LLM<br>(Input: Immagine + Prompt, Output: Arricchimento)"]
+        D["3\. Modello per Embeddings<br>(Calcolo embeddings di testo e immagine)"]
+        
+        subgraph Enrichment ["Arricchimento del Dato"]
+            E["2a. Structured Output"]
+            F["3a. Embeddings Testo"]
+            G["3b. Embeddings Immagine"]
+        end
+    end
 
-### Brief description
 
-The aim of this project is to categorize memes into 4 categories or topics.  
 
-- pol: politics
-- ent: entertainment
-- sport: sports
-- oth: other  
+    %% Subgraph 3 & 4: Archiviazione
+    subgraph Storage ["Sistema di Archiviazione"]
+        H[("4\. Vector Database<br>(Archivia dati e metadati con supporto vettoriale)")]
+        I["5\. Archiviazione Immagini"]
+    end
 
- The classification is based on their visual content (ocr and caption).
+    %% Subgraph 6 & 7: Interfacce Utente
+    subgraph Frontend ["Interfacce Utente"]
+        K["6\. Web App<br>Visualizza ricerca e carica meme"]
+        L["7\. Dashboard Interattiva<br>Statistiche e analisi dell'archivio"]
+    end
 
-### Project structure
+    %% Connessioni tra i nodi
+    Ingestion -- "Immagine + Metadati" --> C
+    Ingestion -- "Immagine" --> I
+    Ingestion -- "Immagine" --> D
 
-![Project structure](slides/imgs/project_overview_v2.png)
+    C --> E
+    E --> D
+    D --> F & G
 
-## Setup
+    E --> H
+    F --> H
+    G --> H
 
-0. Make sure you got docker and wget installed  on your machine as they are required for this project
-1. Download Kafka
+    H -- "URL locale" --> I
 
-    ```shell
-    cd ./kafka/setup
-    wget https://downloads.apache.org/kafka/3.7.1/kafka_2.13-3.7.1.tgz 
-    ```
+    I --> K
+    H --> K
+    H --> L
 
-2. Build containers
-
-    ```shell
-    # if you want gpu acceleration
-    docker compose -f gpu_compose.yaml build
-    # otherwise (cpu)
-    docker compose build
-    ```
-
-4. Start pipeline (see quickstart)
-5. Import `dashboard+data_view.ndjson` file from /kibana directory into kibana
-
-## Quickstart
-
-```shell
-    # if you want gpu acceleration
-    docker compose -f gpu_compose.yaml --profile pipeline up
-    # otherwise (cpu)
-    docker compose --profile pipeline up
+    %% Stili
+    style Ingestion fill:#e6f3ff,stroke:#333,stroke-width:2px
+    style MainPipeline fill:#fff3e6,stroke:#333,stroke-width:2px
+    style Storage fill:#e6ffe6,stroke:#333,stroke-width:2px
+    style Frontend fill:#ffe6e6,stroke:#333,stroke-width:2px
 ```
-
-## Download the dataset
-
-```shell
-    docker compose --profile download_dataset up
-```
-
-## Model training
-
-```shell
-    # Pretrained model is already included with this repo. If you want to rebuild it using your own data you can use this command
-    docker compose --profile build_model up
-```
-
-## Useful links
-
-| Container  | URL |Description|
-| ------------- | ------------- | ------- |
-|  kafka-UI  |  <http://localhost:8080>  |    Open kafka UI |
-| kibana  | <http://localhost:5601>  |    Kibana base URL |
-
-## Dashboard demo
-
-![Dashboard](/slides/imgs/dashboard.png)
-
-## Technologies Used
-
-- **Ingestion**:
-  - Python Script: download memes from selected subreddits using Python Reddit API Wrapper [PRAW](https://praw.readthedocs.io/en/stable/ "PRAW")
-  - [Logstash](https://www.elastic.co/logstash
-    "Logstash")
-- **Image data extraction**
-  - Image captioning model: [blip-image-captioning-large su huggingface](https://huggingface.co/Salesforce/blip-image-captioning-large)  
-  - [EasyOcr](https://www.jaided.ai/easyocr/tutorial/)
-- **Streaming**:
-  - [Apache Kafka](https://www.confluent.io/what-is-apache-kafka "Apache Kafka")
-- **Processing**:
-  - [Spark Streaming](https://spark.apache.org/streaming/ "Spark Streaming")
-  - [Spark MLlib](https://spark.apache.org/mllib/ "Spark MLlib")
-- **Indexing**:
-  - [ElasticSearch](https://www.elastic.co/what-is/elasticsearch "ElasticSearch")
-- **Visualization**:
-  - [Kibana](https://www.elastic.co/what-is/kibana "Kibana")
