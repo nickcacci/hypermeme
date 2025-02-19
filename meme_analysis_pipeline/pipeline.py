@@ -48,7 +48,19 @@ class MemeAnalysisPipeline:
 
         # 2. Calcola gli embeddings
         text_embedding = self.embedding_calculator.calculate_text_embedding(
-            llm_enrichment.explainer
+            "Meme description: \n"
+            + "Title: "
+            + post_text
+            + "\n"
+            + "Text in the image:"
+            + llm_enrichment.image_text
+            + "\n"
+            + "Visual description: "
+            + llm_enrichment.visual_description
+            + "\n"
+            + "Explainer: "
+            + llm_enrichment.explainer
+            + "\n"
         )
         image_embedding = self.embedding_calculator.calculate_image_embedding(
             self.local_url

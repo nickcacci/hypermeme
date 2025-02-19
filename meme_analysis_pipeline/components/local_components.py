@@ -4,7 +4,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from io import BytesIO
-import os
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 from ollama import chat
@@ -16,8 +15,6 @@ from PIL import Image
 import open_clip
 from elasticsearch import Elasticsearch
 import shutil
-from urllib.parse import urlparse
-from tempfile import NamedTemporaryFile
 import logging
 
 
