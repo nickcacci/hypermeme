@@ -1,19 +1,19 @@
 flowchart TB
     %% Subgraph 5: Data Ingestion
-    subgraph Ingestion ["5\. Data Ingestion"]
-        A["5.1 Meme da fonti diverse"]
-        B["5.2 Upload meme tramite webapp"]
+    subgraph Ingestion ["1\. Data Ingestion"]
+        A["1.1 Meme da fonti diverse"]
+        B["1.2 Upload meme tramite webapp"]
     end
 
     %% Subgraph 1 & 2: Pipeline di Analisi e Arricchimento
     subgraph MainPipeline ["Pipeline di Analisi e Arricchimento"]
-        C["1\. Vision LLM<br>(Input: Immagine + Prompt, Output: Arricchimento)"]
-        D["2\. Modello per Embeddings<br>(Calcolo embeddings di testo e immagine)"]
+        C["2\. Vision LLM<br>(Input: Immagine + Prompt, Output: Arricchimento)"]
+        D["3\. Modello per Embeddings<br>(Calcolo embeddings di testo e immagine)"]
         
         subgraph Enrichment ["Arricchimento del Dato"]
-            E["1a. Structured Output"]
-            F["2a. Embeddings Testo"]
-            G["2b. Embeddings Immagine"]
+            E["2a. Structured Output"]
+            F["3a. Embeddings Testo"]
+            G["3b. Embeddings Immagine"]
         end
     end
 
@@ -21,8 +21,8 @@ flowchart TB
 
     %% Subgraph 3 & 4: Archiviazione
     subgraph Storage ["Sistema di Archiviazione"]
-        H["3\. Vector Database<br>(Archivia dati e metadati con supporto vettoriale)"]
-        I["4\. Archiviazione Immagini"]
+        H[("4\. Vector Database<br>(Archivia dati e metadati con supporto vettoriale)")]
+        I["5\. Archiviazione Immagini"]
     end
 
     %% Subgraph 6 & 7: Interfacce Utente
