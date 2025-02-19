@@ -40,6 +40,37 @@ def get_image_embedding(image_path):
     return embedding
 
 
+def display_results(results):
+    displayed_urls = set()
+    cols = st.columns(5, vertical_alignment="bottom")
+    col_index = 0  # Initialize column index
+
+    for i, hit in enumerate(results["hits"]["hits"], start=1):
+        if hit["_source"]["remote_url"] not in displayed_urls:
+            with cols[col_index]:
+
+                st.image(
+                    hit["_source"]["remote_url"],
+                    caption=f"#{i} \nScore: {hit['_score']}",
+                )
+                with st.popover("More details"):
+                    st.markdown(f"**Local URL:** {hit['_source']['local_url']}")
+                    st.markdown(f"**Remote URL:** {hit['_source']['remote_url']}")
+                    st.markdown(f"**Tags:** {hit['_source']['tags']}")
+
+            # Log the information
+            logging.info(
+                f"Hit {i}: Relevance Score: {hit['_score']}, Local URL: {hit['_source']['local_url']}, Remote URL: {hit['_source']['remote_url']}, Tags: {hit['_source']['tags']}"
+            )
+
+            displayed_urls.add(hit["_source"]["remote_url"])
+
+            # col_index = (col_index + 1) % 5  # Move to the next column, reset after 5
+            col_index = col_index + 1
+            if col_index == 5:
+                break
+
+
 def search_image_embedding(image_path):
     logging.info(f"Searching for image embedding for {image_path}...")
     embedding = get_image_embedding(image_path)
@@ -84,31 +115,4 @@ if uploaded_file is not None:
     results = search_image_embedding(uploaded_file_path)
     logging.info("Got %d Hits:" % results["hits"]["total"]["value"])
 
-    displayed_urls = set()
-    cols = st.columns(5, vertical_alignment="bottom")
-    col_index = 0  # Initialize column index
-
-    for i, hit in enumerate(results["hits"]["hits"], start=1):
-        if hit["_source"]["remote_url"] not in displayed_urls:
-            with cols[col_index]:
-
-                st.image(
-                    hit["_source"]["remote_url"],
-                    caption=f"#{i} \nScore: {hit['_score']}",
-                )
-                with st.popover("More details"):
-                    st.markdown(f"**Local URL:** {hit['_source']['local_url']}")
-                    st.markdown(f"**Remote URL:** {hit['_source']['remote_url']}")
-                    st.markdown(f"**Tags:** {hit['_source']['tags']}")
-
-            # Log the information
-            logging.info(
-                f"Hit {i}: Relevance Score: {hit['_score']}, Local URL: {hit['_source']['local_url']}, Remote URL: {hit['_source']['remote_url']}, Tags: {hit['_source']['tags']}"
-            )
-
-            displayed_urls.add(hit["_source"]["remote_url"])
-
-            # col_index = (col_index + 1) % 5  # Move to the next column, reset after 5
-            col_index = col_index + 1
-            if col_index == 5:
-                break
+    display_results(results)
